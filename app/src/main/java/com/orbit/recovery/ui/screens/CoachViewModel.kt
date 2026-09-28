@@ -7,9 +7,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.orbit.recovery.data.UserPreferencesRepository
 import com.orbit.recovery.data.dataStore
-import com.orbit.recovery.data.remote.AnthropicApiService
-import com.orbit.recovery.data.remote.AnthropicRequest
-import com.orbit.recovery.data.remote.ApiMessage
+import com.orbit.recovery.data.remote.OrbitAiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -19,7 +17,6 @@ data class ChatMessage(val role: String, val content: String)
 
 class CoachViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = UserPreferencesRepository(application.dataStore)
-    private val apiService = AnthropicApiService.create()
     private val gson = Gson()
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
@@ -36,7 +33,8 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
             var loadedMessages: List<ChatMessage> = gson.fromJson(savedMessagesJson, type) ?: emptyList()
             
             if (loadedMessages.isEmpty()) {
-                val userName = prefs[UserPreferencesRepository.NAME_KEY] ?: "Alex"
+                val savedName = prefs[UserPreferencesRepository.NAME_KEY]?.trim()
+                val userName = if (savedName.isNullOrBlank() || savedName.length > 20) "there" else savedName
                 loadedMessages = listOf(
                     ChatMessage(
                         role = "assistant",
@@ -62,30 +60,32 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
             _isLoading.value = true
 
             try {
-                val prefs = repository.preferencesFlow.first()
-                val habit = prefs[UserPreferencesRepository.HABIT_KEY] ?: "a habit"
-                val name = prefs[UserPreferencesRepository.NAME_KEY] ?: "Alex"
-                val streak = 0 
-                
-                val systemPrompt = "You are Orbit Coach — a warm, non-judgmental recovery companion. The user is working on: $habit. Their name is $name. They have been free for $streak days. Your role: listen, validate, and guide gently. Keep responses short (2–3 short paragraphs max). Never shame. Celebrate small wins. End with a gentle question or encouragement. If they mention crisis or self-harm, compassionately direct them to emergency services."
-
-                val apiMessages = _messages.value.map { ApiMessage(role = it.role, content = it.content) }
-                
-                val request = AnthropicRequest(
-                    system = systemPrompt,
-                    messages = apiMessages
+                val systemPrompt = """
+                    You are Orbit, a warm and non-judgmental recovery coach helping someone 
+                    overcome compulsive habits. You speak in short, calm, supportive sentences. 
+                    You never shame the user. You celebrate small wins. When someone is 
+                    struggling, you guide them toward their next small right action — 
+                    never toward perfection. Keep responses under 150 words.
+                """.trimIndent()
+        
+                val reply = OrbitAiService.sendMessage(
+                    systemPrompt = systemPrompt,
+                    conversationHistory = _messages.value
+                        .dropLast(1)
+                        .map { Pair(if (it.role == "user") "user" else "assistant", it.content) },
+                    userMessage = text
                 )
                 
-                val response = apiService.sendMessage(request)
-                val responseText = response.content.firstOrNull()?.text ?: "I heard you, but I couldn't formulate a response."
-                
                 val newList = _messages.value.toMutableList()
-                newList.add(ChatMessage(role = "assistant", content = responseText))
+                newList.add(ChatMessage(role = "assistant", content = reply))
                 _messages.value = newList
                 saveMessages(newList)
             } catch (e: Exception) {
                 val newList = _messages.value.toMutableList()
-                newList.add(ChatMessage(role = "assistant", content = "I'm having trouble connecting right now. Take a breath — you've got this."))
+                newList.add(ChatMessage(
+                    role = "assistant",
+                    content = "I'm here — just having a moment of trouble connecting. Try again?"
+                ))
                 _messages.value = newList
                 saveMessages(newList)
             } finally {

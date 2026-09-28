@@ -1,5 +1,18 @@
 package com.orbit.recovery.ui.screens
 
+import android.app.Activity
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material.icons.filled.Shield
+import com.orbit.recovery.OrbitDeviceAdminReceiver
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +25,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.orbit.recovery.R
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -192,6 +209,65 @@ fun ProfileScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(32.dp))
+
+
+                // Protection section
+                val context = LocalContext.current
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val componentName = ComponentName(context, OrbitDeviceAdminReceiver::class.java)
+                
+                var isAdminActive by remember { mutableStateOf(dpm.isAdminActive(componentName)) }
+                var pin by remember { mutableStateOf("") }
+                
+                val adminLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                    isAdminActive = dpm.isAdminActive(componentName)
+                }
+
+                Text("PROTECTION", style = Typography.labelSmall, color = OrbitTextMuted)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OrbitCard(modifier = Modifier.fillMaxWidth()) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = if (isAdminActive) Icons.Default.Shield else Icons.Default.Shield, contentDescription = null, tint = if (isAdminActive) OrbitPrimary else OrbitTextSecondary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isAdminActive) "Uninstall Protection: Active" else "Uninstall Protection: Inactive", style = Typography.bodyLarge, color = OrbitTextPrimary)
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        if (!isAdminActive) {
+                            OutlinedTextField(
+                                value = pin,
+                                onValueChange = { if (it.length <= 4) pin = it.filter { char -> char.isDigit() } },
+                                label = { Text("Set 4-digit PIN", color = OrbitTextMuted) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                textStyle = Typography.bodyLarge.copy(color = OrbitTextPrimary),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = OrbitPrimary,
+                                    unfocusedBorderColor = OrbitBorder
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            OrbitPrimaryButton(
+                                text = "Enable Uninstall Protection",
+                                enabled = pin.length == 4,
+                                onClick = {
+                                    viewModel.saveProtectionPin(pin)
+                                    val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+                                        putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Activate device admin to prevent app uninstallation during urges.")
+                                    }
+                                    adminLauncher.launch(intent)
+                                }
+                            )
+                        }
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Disclaimer

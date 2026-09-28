@@ -27,8 +27,6 @@ android {
         if (localPropertiesFile.exists()) {
             localProperties.load(localPropertiesFile.inputStream())
         }
-        val anthropicKey = localProperties.getProperty("ANTHROPIC_API_KEY") ?: ""
-        buildConfigField("String", "ANTHROPIC_API_KEY", "\"$anthropicKey\"")
     }
 
     buildTypes {

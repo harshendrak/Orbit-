@@ -27,6 +27,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val APP_OVERRIDES_KEY = stringPreferencesKey("app_overrides")
         val VPN_ENABLED_KEY = booleanPreferencesKey("vpn_enabled")
         val START_DATE_KEY = longPreferencesKey("start_date")
+        val PROTECTION_PIN_KEY = stringPreferencesKey("protection_pin")
     }
 
     val preferencesFlow: Flow<Preferences> = dataStore.data
@@ -100,6 +101,10 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setVpnEnabled(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[VPN_ENABLED_KEY] = enabled }
+    }
+
+    suspend fun saveProtectionPin(pin: String) {
+        dataStore.edit { prefs -> prefs[PROTECTION_PIN_KEY] = pin }
     }
 
     suspend fun clearAll() {

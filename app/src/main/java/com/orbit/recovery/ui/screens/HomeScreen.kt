@@ -11,7 +11,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import android.app.Activity
+import android.content.Intent
+import android.net.VpnService
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.orbit.recovery.AppBlockerService
+import com.orbit.recovery.OrbitVpnService
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orbit.recovery.ui.components.*
 import com.orbit.recovery.ui.theme.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.orbit.recovery.R
 
 @Composable
 fun HomeScreen(
@@ -39,6 +52,30 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateTab: (OrbitTab) -> Unit
 ) {
+    val context = LocalContext.current
+    var shieldActive by remember { mutableStateOf(false) }
+
+    val vpnLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val intent = Intent(context, OrbitVpnService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+            val blocker = Intent(context, AppBlockerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(blocker)
+            } else {
+                context.startService(blocker)
+            }
+            shieldActive = true
+            onNavigateToPanic()
+        }
+    }
+
     Scaffold(
         bottomBar = {
             OrbitBottomNav(
@@ -51,8 +88,8 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 20.dp)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(start = 20.dp, top = 0.dp, end = 20.dp, bottom = 80.dp)
         ) {
             item {
                 Spacer(modifier = Modifier.height(24.dp))
@@ -64,15 +101,11 @@ fun HomeScreen(
                     verticalAlignment = Alignment.Top
                 ) {
                     Column {
-                        Text(
-                            text = "ORBIT",
-                            style = Typography.labelSmall,
-                            color = OrbitTextMuted
-                        )
-                        Text(
-                            text = "Your recovery dashboard",
-                            style = Typography.bodyMedium,
-                            color = OrbitTextMuted
+                        Image(
+                            painter = painterResource(id = R.drawable.orbit_logo),
+                            contentDescription = "Orbit",
+                            modifier = Modifier.height(32.dp).wrapContentWidth(),
+                            contentScale = ContentScale.Fit
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -266,7 +299,27 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Button(
-                            onClick = { onNavigateToPanic() },
+                            onClick = {
+                                val vpnIntent = VpnService.prepare(context)
+                                if (vpnIntent != null) {
+                                    vpnLauncher.launch(vpnIntent)
+                                } else {
+                                    val intent = Intent(context, OrbitVpnService::class.java)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        context.startForegroundService(intent)
+                                    } else {
+                                        context.startService(intent)
+                                    }
+                                    val blocker = Intent(context, AppBlockerService::class.java)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        context.startForegroundService(blocker)
+                                    } else {
+                                        context.startService(blocker)
+                                    }
+                                    shieldActive = true
+                                    onNavigateToPanic()
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(54.dp),
@@ -287,14 +340,14 @@ fun HomeScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
-                                    .border(1.dp, OrbitPanicButton.copy(alpha = 0.5f), RoundedCornerShape(50))
+                                    .border(1.dp, if (shieldActive) OrbitPrimary.copy(alpha = 0.5f) else OrbitPanicButton.copy(alpha = 0.5f), RoundedCornerShape(50))
                                     .clickable { onNavigateToContentFilter() }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "🛡 Shield: Off",
+                                    text = if (shieldActive) "🛡 Shield: ON" else "🛡 Shield: Off",
                                     style = Typography.labelSmall,
-                                    color = OrbitPanicButton
+                                    color = if (shieldActive) OrbitPrimary else OrbitPanicButton
                                 )
                             }
                         }
@@ -363,7 +416,7 @@ fun HomeScreen(
                     subtitle = "Settings and preferences",
                     onClick = onNavigateToProfile
                 )
-                Spacer(modifier = Modifier.height(32.dp))
+                
             }
         }
     }

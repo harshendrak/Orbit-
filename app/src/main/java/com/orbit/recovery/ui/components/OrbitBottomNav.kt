@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,10 +50,10 @@ fun OrbitBottomNav(
     onTabSelected: (OrbitTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    NavigationBar(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .navigationBarsPadding()
             .drawBehind {
                 drawLine(
                     color = OrbitDivider,
@@ -59,7 +62,9 @@ fun OrbitBottomNav(
                     strokeWidth = 1.dp.toPx()
                 )
             },
-        color = OrbitSurface
+        containerColor = OrbitSurface,
+        tonalElevation = 0.dp,
+        windowInsets = NavigationBarDefaults.windowInsets
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

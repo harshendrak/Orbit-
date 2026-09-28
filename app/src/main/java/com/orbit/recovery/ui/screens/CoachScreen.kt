@@ -6,9 +6,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,6 +18,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.orbit.recovery.R
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,8 +40,21 @@ fun CoachScreen(
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var inputText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
 
-    Surface(modifier = Modifier.fillMaxSize(), color = OrbitBackground) {
+    LaunchedEffect(messages.size, isLoading) {
+        if (messages.isNotEmpty()) {
+            val targetIndex = if (isLoading) messages.size else messages.size - 1
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding(),
+        color = OrbitBackground
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Top Bar
             Row(
@@ -70,7 +89,12 @@ fun CoachScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("ORBIT", style = Typography.labelSmall, color = OrbitTextMuted)
+                    Image(
+                        painter = painterResource(id = R.drawable.orbit_logo),
+                        contentDescription = "Orbit",
+                        modifier = Modifier.height(26.dp).wrapContentWidth(),
+                        contentScale = ContentScale.Fit
+                    )
                     Text("Your AI companion", style = Typography.labelSmall, color = OrbitTextMuted)
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -86,32 +110,33 @@ fun CoachScreen(
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Chat Area
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                reverseLayout = true
+                reverseLayout = false
             ) {
+                items(messages) { msg ->
+                    ChatBubble(message = msg)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
                 if (isLoading) {
                     item {
                         TypingIndicator()
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
-
-                items(messages.reversed()) { msg ->
-                    ChatBubble(message = msg)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
             }
 
             // Quick Actions
             if (messages.size < 4 && !isLoading) {
-                val suggestions = listOf("I feel an urge", "I'm stressed", "I relapsed", "I did well today")
+                val suggestions = listOf("I feel an urge", "I'm stressed", "I relapsed", "I'm proud of myself")
                 LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -123,7 +148,7 @@ fun CoachScreen(
                             shape = RoundedCornerShape(50),
                             border = BorderStroke(1.dp, OrbitBorder),
                             color = Color.Transparent,
-                            onClick = { viewModel.sendMessage(suggestion) },
+                            onClick = { inputText = suggestion },
                             modifier = Modifier.height(32.dp)
                         ) {
                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -143,7 +168,10 @@ fun CoachScreen(
             Surface(
                 color = OrbitSurface,
                 border = BorderStroke(width = 1.dp, color = OrbitBorder),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
             ) {
                 Row(
                     modifier = Modifier
@@ -187,11 +215,12 @@ fun CoachScreen(
 @Composable
 fun ChatBubble(message: ChatMessage) {
     val isUser = message.role == "user"
-    val backgroundColor = if (isUser) OrbitPrimaryLight else OrbitSurface
+    val backgroundColor = if (isUser) OrbitPrimary else OrbitSurface
+    val textColor = if (isUser) Color.White else OrbitTextPrimary
     val shape = if (isUser) {
-        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 12.dp)
+        RoundedCornerShape(topStart = 18.dp, topEnd = 4.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
     } else {
-        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 12.dp, bottomEnd = 18.dp)
+        RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
     }
 
     Row(
@@ -207,7 +236,7 @@ fun ChatBubble(message: ChatMessage) {
             Text(
                 text = message.content,
                 style = Typography.bodyLarge,
-                color = OrbitTextPrimary,
+                color = textColor,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }

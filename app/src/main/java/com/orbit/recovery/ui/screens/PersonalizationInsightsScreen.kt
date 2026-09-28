@@ -14,6 +14,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.orbit.recovery.R
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,10 +46,6 @@ fun PersonalizationInsightsScreen(
     val percentage = (currentStep.toFloat() / totalSteps * 100).toInt()
     
     var selectedSymptoms by remember { mutableStateOf(setOf<String>()) }
-    
-    // Signature path states
-    var signaturePaths by remember { mutableStateOf(mutableListOf<Path>()) }
-    var currentPath by remember { mutableStateOf<Path?>(null) }
     
     Surface(modifier = Modifier.fillMaxSize(), color = OrbitBackground) {
         Column(
@@ -92,7 +92,7 @@ fun PersonalizationInsightsScreen(
                     text = "Skip",
                     style = Typography.labelSmall,
                     color = OrbitTextSecondary,
-                    modifier = Modifier.clickable { onSkip() }.padding(8.dp)
+                    modifier = Modifier.clickable { onSkip() }
                 )
             }
             
@@ -204,20 +204,7 @@ fun PersonalizationInsightsScreen(
                                         }
                                     }
                                     5 -> InsightStep5()
-                                    6 -> InsightStep6(
-                                        signaturePaths = signaturePaths,
-                                        currentPath = currentPath,
-                                        onClearSignature = {
-                                            signaturePaths = mutableListOf()
-                                            currentPath = null
-                                        },
-                                        onDrawStart = { path -> currentPath = path },
-                                        onDraw = { currentPath = it },
-                                        onDrawEnd = {
-                                            currentPath?.let { signaturePaths.add(it) }
-                                            currentPath = null
-                                        }
-                                    )
+                                    6 -> InsightStep6()
                                 }
                                 
                                 Spacer(modifier = Modifier.height(32.dp))
@@ -393,14 +380,11 @@ fun InsightStep5() {
 }
 
 @Composable
-fun InsightStep6(
-    signaturePaths: List<Path>,
-    currentPath: Path?,
-    onClearSignature: () -> Unit,
-    onDrawStart: (Path) -> Unit,
-    onDraw: (Path) -> Unit,
-    onDrawEnd: () -> Unit
-) {
+fun InsightStep6() {
+    var path by remember { mutableStateOf(Path()) }
+    var lastX by remember { mutableStateOf(0f) }
+    var lastY by remember { mutableStateOf(0f) }
+
     Column {
         Surface(
             color = Color.Transparent,
@@ -448,7 +432,7 @@ fun InsightStep6(
                         "Clear", 
                         style = Typography.labelSmall, 
                         color = OrbitPrimary,
-                        modifier = Modifier.clickable { onClearSignature() }.padding(4.dp)
+                        modifier = Modifier.clickable { path = Path() }.padding(4.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -456,59 +440,38 @@ fun InsightStep6(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
+                        .height(160.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(OrbitSurfaceVariant)
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    val newPath = Path().apply { moveTo(offset.x, offset.y) }
-                                    onDrawStart(newPath)
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    val newPath = Path().apply {
-                                        currentPath?.let { addPath(it) }
-                                        lineTo(change.position.x, change.position.y)
-                                    }
-                                    onDraw(newPath)
-                                },
-                                onDragEnd = { onDrawEnd() }
-                            )
-                        }
                 ) {
-                    if (signaturePaths.isEmpty() && currentPath == null) {
-                        Text(
-                            "Scribble your Signature here (Visual only)",
-                            style = Typography.bodyMedium,
-                            color = OrbitTextMuted,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-                    
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        signaturePaths.forEach { path ->
-                            drawPath(
-                                path = path,
-                                color = OrbitTextPrimary,
-                                style = Stroke(
-                                    width = 3.dp.toPx(),
-                                    cap = StrokeCap.Round,
-                                    join = StrokeJoin.Round
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(OrbitSurfaceVariant, RoundedCornerShape(12.dp))
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragStart = { offset ->
+                                        path = Path().also { 
+                                            it.addPath(path)
+                                            it.moveTo(offset.x, offset.y) 
+                                        }
+                                        lastX = offset.x
+                                        lastY = offset.y
+                                    },
+                                    onDrag = { change, _ ->
+                                        val x = change.position.x
+                                        val y = change.position.y
+                                        path = Path().apply {
+                                            addPath(path)
+                                            quadraticBezierTo(lastX, lastY, (lastX + x) / 2f, (lastY + y) / 2f)
+                                        }
+                                        lastX = x
+                                        lastY = y
+                                        change.consume()
+                                    }
                                 )
-                            )
-                        }
-                        currentPath?.let { path ->
-                            drawPath(
-                                path = path,
-                                color = OrbitTextPrimary,
-                                style = Stroke(
-                                    width = 3.dp.toPx(),
-                                    cap = StrokeCap.Round,
-                                    join = StrokeJoin.Round
-                                )
-                            )
-                        }
+                            }
+                    ) {
+                        drawPath(path = path, color = OrbitTextPrimary, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                     }
                 }
                 

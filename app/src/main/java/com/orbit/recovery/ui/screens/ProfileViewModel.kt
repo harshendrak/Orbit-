@@ -46,4 +46,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             onComplete()
         }
     }
+
+    fun saveProtectionPin(pin: String) {
+        viewModelScope.launch {
+            repository.saveProtectionPin(pin)
+        }
+    }
 }

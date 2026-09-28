@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,7 +34,12 @@ fun ResultsScreen(
     onNavigateToHome: () -> Unit,
     viewModel: ResultsViewModel = viewModel()
 ) {
-    Surface(modifier = Modifier.fillMaxSize(), color = OrbitBackground) {
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding(),
+        color = OrbitBackground
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
