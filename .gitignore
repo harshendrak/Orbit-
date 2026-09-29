@@ -15,3 +15,8 @@
 .cxx
 local.properties
 .env
+.idea/
+*.jks
+*.keystore
+build/
+.gradle/

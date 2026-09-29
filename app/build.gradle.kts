@@ -27,6 +27,8 @@ android {
         if (localPropertiesFile.exists()) {
             localProperties.load(localPropertiesFile.inputStream())
         }
+        val openRouterKey = localProperties.getProperty("OPENROUTER_API_KEY") ?: ""
+        buildConfigField("String", "OPENROUTER_API_KEY", "\"$openRouterKey\"")
     }
 
     buildTypes {
@@ -82,18 +84,6 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-
-    // Retrofit + OkHttp (for AI Coach API)
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-
-    // WorkManager (for App Blocker service)
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-
-    // Accompanist permissions
-    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")

@@ -7,11 +7,13 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+import com.orbit.recovery.BuildConfig
+
 object OrbitAiService {
 
     private const val BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-    private const val MODEL = "qwen/qwen3-8b:free"
-    private const val API_KEY = "YOUR_API_KEY_HERE"
+    private const val MODEL = "qwen/qwen3.8-27b:free"
+    private val API_KEY = BuildConfig.OPENROUTER_API_KEY
 
     suspend fun sendMessage(
         systemPrompt: String,
